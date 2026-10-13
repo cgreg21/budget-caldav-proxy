@@ -1,14 +1,14 @@
 /**
  * CORS proxy for a CalDAV server, running as a Cloudflare Worker.
  *
- * Browsers only let the Budget PWA talk to CalDAV servers that send CORS headers, which hosted
- * providers (Infomaniak, Murena, Disroot, ...) do not. This worker relays the few CalDAV methods the
- * app needs to one upstream server and adds the headers. It stores nothing and only answers requests
- * coming from the origins listed in `ALLOWED_ORIGINS`, so it cannot be used as an open proxy.
+ * Browsers only let the Budget PWA talk to CalDAV servers that send CORS headers, which most hosted
+ * providers do not. This worker relays the few CalDAV methods the app needs to one upstream server
+ * and adds the headers. It stores nothing and only answers requests coming from the origins listed
+ * in `ALLOWED_ORIGINS`, so it cannot be used as an open proxy.
  *
  * Configuration (wrangler.toml `[vars]` or the Cloudflare dashboard):
- * - UPSTREAM         origin of the CalDAV server, e.g. "https://murena.io"
- * - ALLOWED_ORIGINS  comma-separated browser origins, e.g. "https://cgreg21.github.io,http://localhost:4200"
+ * - UPSTREAM         origin of the CalDAV server, e.g. "https://dav.example.org"
+ * - ALLOWED_ORIGINS  comma-separated browser origins, e.g. "https://user.github.io,http://localhost:4200"
  * - ALLOWED_PATHS    optional comma-separated path prefixes allowed upstream, e.g. "/remote.php/dav/"
  */
 

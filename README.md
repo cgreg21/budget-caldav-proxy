@@ -26,22 +26,24 @@ Les applications mobile et bureau n'en ont pas besoin : elles parlent directemen
 
 ## Configuration
 
-Éditez `wrangler.toml` :
+Éditez `wrangler.toml` et remplacez les valeurs d'exemple :
 
 ```toml
 [vars]
-UPSTREAM = "https://murena.io"                                      # origine du serveur CalDAV
-ALLOWED_ORIGINS = "https://cgreg21.github.io,http://localhost:4200" # origines de la PWA
-ALLOWED_PATHS = "/remote.php/dav/"                                  # Nextcloud ; Infomaniak : "/calendars/"
+UPSTREAM = "https://dav.example.org"                                   # origine du serveur CalDAV (sans chemin)
+ALLOWED_ORIGINS = "https://your-user.github.io,http://localhost:4200"  # origines de la PWA
+ALLOWED_PATHS = ""                                                     # préfixes autorisés, vide = tous
 ```
 
-Quelques valeurs `UPSTREAM` / `ALLOWED_PATHS` :
+`ALLOWED_PATHS` restreint les chemins relayés vers le serveur (recommandé) ; laissez vide pour tout
+autoriser. Quelques valeurs selon le logiciel du serveur :
 
-| Fournisseur | `UPSTREAM` | `ALLOWED_PATHS` | URL de calendrier côté serveur |
+| Serveur | `UPSTREAM` | `ALLOWED_PATHS` | URL de calendrier côté serveur |
 | --- | --- | --- | --- |
-| Murena, Disroot, Nextcloud | `https://murena.io` | `/remote.php/dav/` | `/remote.php/dav/calendars/<utilisateur>/<calendrier>/` |
+| Nextcloud (ou hébergeur Nextcloud) | `https://<hôte>` | `/remote.php/dav/` | `/remote.php/dav/calendars/<utilisateur>/<calendrier>/` |
 | Infomaniak | `https://sync.infomaniak.com` | `/calendars/` | `/calendars/<DSxxxxx>/<id-calendrier>/` |
-| Radicale / Baïkal | `https://dav.example.org` | `/` ou `/dav.php/` | selon l'installation |
+| Radicale | `https://<hôte>` | `/` | `/<utilisateur>/<calendrier>/` |
+| Baïkal | `https://<hôte>` | `/dav.php/` | `/dav.php/calendars/<utilisateur>/<calendrier>/` |
 
 ## Déploiement
 
@@ -64,7 +66,7 @@ gardant le même chemin :
 
 | | Exemple |
 | --- | --- |
-| URL d'origine | `https://murena.io/remote.php/dav/calendars/alice/budget/` |
+| URL d'origine | `https://dav.example.org/remote.php/dav/calendars/alice/budget/` |
 | URL dans la PWA | `https://budget-caldav-proxy.<compte>.workers.dev/remote.php/dav/calendars/alice/budget/` |
 | Identifiant | `alice` |
 | Mot de passe | mot de passe d'application du fournisseur |
@@ -76,12 +78,12 @@ identifiants dans ses applications.
 ## Vérification
 
 ```bash
-curl -i -X OPTIONS -H "Origin: https://cgreg21.github.io" \
+curl -i -X OPTIONS -H "Origin: https://your-user.github.io" \
   -H "Access-Control-Request-Method: PROPFIND" \
   https://budget-caldav-proxy.<compte>.workers.dev/remote.php/dav/calendars/alice/budget/
 ```
 
-doit répondre `204` avec `Access-Control-Allow-Origin: https://cgreg21.github.io`. Sans en-tête
+doit répondre `204` avec `Access-Control-Allow-Origin: https://your-user.github.io`. Sans en-tête
 `Origin`, la réponse est `403`.
 
 ## Développement

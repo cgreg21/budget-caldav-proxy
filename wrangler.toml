@@ -2,9 +2,12 @@ name = "budget-caldav-proxy"
 main = "src/index.js"
 compatibility_date = "2026-01-01"
 
-# Set the CalDAV server to relay and the browser origins allowed to use the proxy.
+# Replace the placeholders below before deploying (see README.md):
+# - UPSTREAM        origin of your CalDAV server (scheme + host, no path)
+# - ALLOWED_ORIGINS comma-separated origins of the web app(s) allowed to use the proxy
+# - ALLOWED_PATHS   optional comma-separated path prefixes allowed upstream; leave empty to allow all
 # Nothing else is needed: no storage, no secrets. Credentials are sent by the app on every request.
 [vars]
-UPSTREAM = "https://murena.io"
-ALLOWED_ORIGINS = "https://cgreg21.github.io,http://localhost:4200"
-ALLOWED_PATHS = "/remote.php/dav/"
+UPSTREAM = "https://dav.example.org"
+ALLOWED_ORIGINS = "https://your-user.github.io,http://localhost:4200"
+ALLOWED_PATHS = ""

@@ -5,10 +5,10 @@ import worker from '../src/index.js';
 
 const env = {
   UPSTREAM: 'https://dav.example.org',
-  ALLOWED_ORIGINS: 'https://cgreg21.github.io,http://localhost:4200',
+  ALLOWED_ORIGINS: 'https://app.example.org,http://localhost:4200',
   ALLOWED_PATHS: '/remote.php/dav/',
 };
-const ORIGIN = 'https://cgreg21.github.io';
+const ORIGIN = 'https://app.example.org';
 
 /** Runs the worker with `fetch` replaced by a stub recording the upstream call. */
 async function run(request, upstream = () => new Response('ok')) {
