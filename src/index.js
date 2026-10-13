@@ -3,12 +3,12 @@
  *
  * Browsers only let the Budget PWA talk to CalDAV servers that send CORS headers, which most hosted
  * providers do not. This worker relays the few CalDAV methods the app needs to one upstream server
- * and adds the headers. It stores nothing and only answers requests coming from the origins listed
- * in `ALLOWED_ORIGINS`, so it cannot be used as an open proxy.
+ * and adds the headers. It stores nothing. By default any browser origin may use it; set
+ * `ALLOWED_ORIGINS` to restrict it to your own web app(s).
  *
  * Configuration (wrangler.toml `[vars]` or the Cloudflare dashboard):
  * - UPSTREAM         origin of the CalDAV server, e.g. "https://dav.example.org"
- * - ALLOWED_ORIGINS  comma-separated browser origins, e.g. "https://user.github.io,http://localhost:4200"
+ * - ALLOWED_ORIGINS  optional comma-separated browser origins; empty or "*" allows all
  * - ALLOWED_PATHS    optional comma-separated path prefixes allowed upstream, e.g. "/remote.php/dav/"
  */
 
@@ -37,10 +37,11 @@ export default {
   async fetch(request, env) {
     const origin = request.headers.get('Origin');
     const allowedOrigins = list(env.ALLOWED_ORIGINS);
-    if (!origin || !allowedOrigins.includes(origin)) return reply(403, 'Origin not allowed');
+    const allowAll = allowedOrigins.length === 0 || allowedOrigins.includes('*');
+    if (!allowAll && (!origin || !allowedOrigins.includes(origin))) return reply(403, 'Origin not allowed');
     if (!METHODS.includes(request.method)) return reply(405, 'Method not allowed', { Allow: METHODS.join(', ') });
 
-    const cors = corsHeaders(origin);
+    const cors = corsHeaders(origin ?? '*');
     if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
 
     let upstream;

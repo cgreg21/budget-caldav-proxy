@@ -11,7 +11,7 @@ const env = {
 const ORIGIN = 'https://app.example.org';
 
 /** Runs the worker with `fetch` replaced by a stub recording the upstream call. */
-async function run(request, upstream = () => new Response('ok')) {
+async function run(request, upstream = () => new Response('ok'), vars = env) {
   const calls = [];
   const realFetch = globalThis.fetch;
   globalThis.fetch = async (url, init) => {
@@ -19,13 +19,31 @@ async function run(request, upstream = () => new Response('ok')) {
     return upstream(url, init);
   };
   try {
-    return { response: await worker.fetch(request, env), calls };
+    return { response: await worker.fetch(request, vars), calls };
   } finally {
     globalThis.fetch = realFetch;
   }
 }
 
-test('rejects requests without an allowed origin', async () => {
+test('accepts any origin when ALLOWED_ORIGINS is empty', async () => {
+  const open = { ...env, ALLOWED_ORIGINS: '' };
+  const anyOrigin = await run(
+    new Request('https://proxy/remote.php/dav/x', { method: 'PROPFIND', headers: { Origin: 'https://other.example' } }),
+    undefined,
+    open,
+  );
+  assert.equal(anyOrigin.response.status, 200);
+  assert.equal(anyOrigin.response.headers.get('Access-Control-Allow-Origin'), 'https://other.example');
+
+  const noOrigin = await run(new Request('https://proxy/remote.php/dav/x', { method: 'PROPFIND' }), undefined, open);
+  assert.equal(noOrigin.response.status, 200);
+  assert.equal(noOrigin.response.headers.get('Access-Control-Allow-Origin'), '*');
+
+  const star = await run(new Request('https://proxy/remote.php/dav/x', { method: 'PROPFIND' }), undefined, { ...env, ALLOWED_ORIGINS: '*' });
+  assert.equal(star.response.status, 200);
+});
+
+test('rejects requests without an allowed origin when ALLOWED_ORIGINS is set', async () => {
   const { response, calls } = await run(new Request('https://proxy/remote.php/dav/calendars/u/c/', { method: 'PROPFIND' }));
   assert.equal(response.status, 403);
   assert.equal(calls.length, 0);
