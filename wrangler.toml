@@ -1,0 +1,10 @@
+name = "budget-caldav-proxy"
+main = "src/index.js"
+compatibility_date = "2026-01-01"
+
+# Set the CalDAV server to relay and the browser origins allowed to use the proxy.
+# Nothing else is needed: no storage, no secrets. Credentials are sent by the app on every request.
+[vars]
+UPSTREAM = "https://murena.io"
+ALLOWED_ORIGINS = "https://cgreg21.github.io,http://localhost:4200"
+ALLOWED_PATHS = "/remote.php/dav/"

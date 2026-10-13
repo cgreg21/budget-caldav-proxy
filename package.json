@@ -1,0 +1,16 @@
+{
+  "name": "budget-caldav-proxy",
+  "version": "1.0.0",
+  "private": true,
+  "description": "CORS proxy exposing a hosted CalDAV server to the Budget PWA (Cloudflare Worker).",
+  "type": "module",
+  "scripts": {
+    "test": "node --test test/*.test.js",
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "tail": "wrangler tail"
+  },
+  "devDependencies": {
+    "wrangler": "^4.0.0"
+  }
+}
