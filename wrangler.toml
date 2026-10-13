@@ -2,12 +2,14 @@ name = "budget-caldav-proxy"
 main = "src/index.js"
 compatibility_date = "2026-01-01"
 
-# Replace the placeholders below before deploying (see README.md):
-# - UPSTREAM        origin of your CalDAV server (scheme + host, no path)
-# - ALLOWED_ORIGINS optional comma-separated origins of the web app(s) allowed to use the proxy; empty = all
-# - ALLOWED_PATHS   optional comma-separated path prefixes allowed upstream; leave empty to allow all
+# All variables are optional; the app names the CalDAV server in an X-Upstream header on each call.
+# - UPSTREAM          default server origin (https, no path) used when a request has no X-Upstream header
+# - ALLOWED_UPSTREAMS comma-separated server origins accepted in X-Upstream; empty = any https server
+# - ALLOWED_ORIGINS   comma-separated origins of the web app(s) allowed to use the proxy; empty = all
+# - ALLOWED_PATHS     comma-separated path prefixes allowed upstream; empty = all
 # Nothing else is needed: no storage, no secrets. Credentials are sent by the app on every request.
 [vars]
-UPSTREAM = "https://dav.example.org"
+UPSTREAM = ""
+ALLOWED_UPSTREAMS = ""
 ALLOWED_ORIGINS = ""
 ALLOWED_PATHS = ""

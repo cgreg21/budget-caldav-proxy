@@ -112,3 +112,33 @@ test('reports an unreachable upstream as 502 with CORS headers', async () => {
   assert.equal(response.status, 502);
   assert.equal(response.headers.get('Access-Control-Allow-Origin'), ORIGIN);
 });
+
+test('takes the upstream from the X-Upstream header and does not forward it', async () => {
+  const { response, calls } = await run(new Request('https://proxy/remote.php/dav/calendars/u/c/', {
+    method: 'PROPFIND', headers: { Origin: ORIGIN, 'X-Upstream': 'https://cloud.other.example' },
+  }), () => new Response(null, { status: 207 }), { ALLOWED_PATHS: '/remote.php/dav/' });
+  assert.equal(response.status, 207);
+  assert.equal(calls[0].url, 'https://cloud.other.example/remote.php/dav/calendars/u/c/');
+  assert.equal(calls[0].init.headers.get('x-upstream'), null);
+
+  const preflight = await run(new Request('https://proxy/x', { method: 'OPTIONS', headers: { Origin: ORIGIN } }));
+  assert.match(preflight.response.headers.get('Access-Control-Allow-Headers'), /x-upstream/);
+});
+
+test('rejects missing, malformed or disallowed upstreams', async () => {
+  const missing = await run(new Request('https://proxy/x', { method: 'PROPFIND', headers: { Origin: ORIGIN } }), undefined, {});
+  assert.equal(missing.response.status, 400);
+  assert.equal(missing.calls.length, 0);
+
+  for (const bad of ['http://cloud.example', 'https://cloud.example/dav/', 'not a url']) {
+    const { response, calls } = await run(new Request('https://proxy/x', { method: 'PROPFIND', headers: { Origin: ORIGIN, 'X-Upstream': bad } }));
+    assert.equal(response.status, 400, bad);
+    assert.equal(calls.length, 0);
+  }
+
+  const restricted = { ...env, ALLOWED_UPSTREAMS: 'https://cloud.example' };
+  const denied = await run(new Request('https://proxy/remote.php/dav/x', { method: 'PROPFIND', headers: { Origin: ORIGIN, 'X-Upstream': 'https://evil.example' } }), undefined, restricted);
+  assert.equal(denied.response.status, 403);
+  const granted = await run(new Request('https://proxy/remote.php/dav/x', { method: 'PROPFIND', headers: { Origin: ORIGIN, 'X-Upstream': 'https://cloud.example' } }), undefined, restricted);
+  assert.equal(granted.response.status, 200);
+});

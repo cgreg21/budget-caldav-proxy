@@ -2,18 +2,20 @@
  * CORS proxy for a CalDAV server, running as a Cloudflare Worker.
  *
  * Browsers only let the Budget PWA talk to CalDAV servers that send CORS headers, which most hosted
- * providers do not. This worker relays the few CalDAV methods the app needs to one upstream server
- * and adds the headers. It stores nothing. By default any browser origin may use it; set
- * `ALLOWED_ORIGINS` to restrict it to your own web app(s).
+ * providers do not. This worker relays the few CalDAV methods the app needs to the server named by
+ * the request's `X-Upstream` header (or a default) and adds the headers. It stores nothing. By default
+ * any browser origin and any https server are accepted; restrict them with the variables below.
  *
- * Configuration (wrangler.toml `[vars]` or the Cloudflare dashboard):
- * - UPSTREAM         origin of the CalDAV server, e.g. "https://dav.example.org"
- * - ALLOWED_ORIGINS  optional comma-separated browser origins; empty or "*" allows all
- * - ALLOWED_PATHS    optional comma-separated path prefixes allowed upstream, e.g. "/remote.php/dav/"
+ * Configuration (wrangler.toml `[vars]` or the Cloudflare dashboard), all optional:
+ * - UPSTREAM           default CalDAV server origin when the request has no `X-Upstream` header
+ * - ALLOWED_UPSTREAMS  comma-separated origins accepted in `X-Upstream`; empty allows any https origin
+ * - ALLOWED_ORIGINS    comma-separated browser origins; empty or "*" allows all
+ * - ALLOWED_PATHS      comma-separated path prefixes allowed upstream, e.g. "/remote.php/dav/"; empty allows all
  */
 
 const METHODS = ['OPTIONS', 'GET', 'HEAD', 'PUT', 'DELETE', 'PROPFIND', 'REPORT'];
 const REQUEST_HEADERS = ['authorization', 'content-type', 'depth', 'if-match', 'if-none-match', 'prefer'];
+const UPSTREAM_HEADER = 'x-upstream';
 const EXPOSED_HEADERS = ['etag', 'content-type', 'dav', 'allow'];
 const MAX_AGE = '86400';
 
@@ -23,7 +25,7 @@ function corsHeaders(origin) {
   return {
     'Access-Control-Allow-Origin': origin,
     'Access-Control-Allow-Methods': METHODS.join(', '),
-    'Access-Control-Allow-Headers': REQUEST_HEADERS.join(', '),
+    'Access-Control-Allow-Headers': REQUEST_HEADERS.concat(UPSTREAM_HEADER).join(', '),
     'Access-Control-Expose-Headers': EXPOSED_HEADERS.join(', '),
     'Access-Control-Max-Age': MAX_AGE,
     'Vary': 'Origin',
@@ -32,6 +34,25 @@ function corsHeaders(origin) {
 
 const reply = (status, message, headers = {}) =>
   new Response(message, { status, headers: { 'Content-Type': 'text/plain; charset=utf-8', ...headers } });
+
+/** The CalDAV server origin for this request: the `X-Upstream` header, else the `UPSTREAM` variable. */
+function resolveUpstream(request, env) {
+  const requested = request.headers.get(UPSTREAM_HEADER);
+  const value = requested ?? env.UPSTREAM;
+  if (!value) return { error: 'No upstream: send an X-Upstream header or set UPSTREAM' };
+  let upstream;
+  try {
+    upstream = new URL(value);
+  } catch {
+    return { error: 'Invalid upstream' };
+  }
+  if (upstream.protocol !== 'https:' || upstream.pathname !== '/' || upstream.search || upstream.hash) {
+    return { error: 'Upstream must be an https origin without path' };
+  }
+  const allowed = list(env.ALLOWED_UPSTREAMS);
+  if (requested !== null && allowed.length > 0 && !allowed.includes(upstream.origin)) return { error: 'Upstream not allowed' };
+  return { upstream };
+}
 
 export default {
   async fetch(request, env) {
@@ -44,12 +65,9 @@ export default {
     const cors = corsHeaders(origin ?? '*');
     if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
 
-    let upstream;
-    try {
-      upstream = new URL(env.UPSTREAM);
-    } catch {
-      return reply(500, 'UPSTREAM is not configured', cors);
-    }
+    const resolved = resolveUpstream(request, env);
+    if (resolved.error) return reply(resolved.error.startsWith('Upstream not allowed') ? 403 : 400, resolved.error, cors);
+    const { upstream } = resolved;
     const url = new URL(request.url);
     const allowedPaths = list(env.ALLOWED_PATHS);
     if (allowedPaths.length > 0 && !allowedPaths.some((prefix) => url.pathname.startsWith(prefix))) {
